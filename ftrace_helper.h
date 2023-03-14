@@ -124,10 +124,19 @@ int fh_install_hook(struct ftrace_hook *hook)
      * the built-in anti-recursion guard provided by ftrace is useless if
      * we're modifying $rip. This is why we have to implement our own checks
      * (see USE_FENTRY_OFFSET). */
-    hook->ops.func = fh_ftrace_thunk;
-    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS
-            | FTRACE_OPS_FL_RECURSION_SAFE
-            | FTRACE_OPS_FL_IPMODIFY;
+    #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0))
+    {
+        hook->ops.func = (ftrace_func_t)fh_ftrace_thunk;
+        hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS
+                | FTRACE_ITER_NOTRACE
+                | FTRACE_OPS_FL_IPMODIFY;
+    }
+    #else
+        hook->ops.func = fh_ftrace_thunk;
+        hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS
+                | FTRACE_OPS_FL_RECURSION_SAFE
+                | FTRACE_OPS_FL_IPMODIFY;
+    #endif
 
     err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 0);
     if(err)
